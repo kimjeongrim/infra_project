@@ -1,0 +1,281 @@
+data "aws_ami" "amzn" {
+  most_recent = var.bool1
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-kernel-5.10*-hvm-*-x86_64-gp2"]
+    #   Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+  owners = ["amazon"]
+}
+
+resource "aws_instance" "foryou_web" {
+  count                  = 2
+  ami                    = data.aws_ami.amzn.id
+  instance_type          = var.type
+  key_name               = var.name
+  private_ip             = "${var.subip}${count.index}.11"
+  availability_zone      = "${var.region}${count.index == 0 ? "a" : "c"}"
+  subnet_id              = aws_subnet.web[count.index].id
+  vpc_security_group_ids = [aws_security_group.foryou_sgweb.id]
+  user_data              = file("install.sh")
+
+  tags = {
+    Name = "${var.name}-web-${count.index == 0 ? "a" : "c"}"
+  }
+}
+
+resource "aws_instance" "foryou_was" {
+  count                  = 2
+  ami                    = data.aws_ami.amzn.id
+  instance_type          = var.type
+  key_name               = var.name
+  private_ip             = "${var.subip}${count.index + 2}.11"
+  availability_zone      = "${var.region}${count.index + 2 == 2 ? "a" : "c"}"
+  subnet_id              = aws_subnet.was[count.index].id
+  vpc_security_group_ids = [aws_security_group.foryou_sgweb.id]
+  user_data              = file("install.sh")
+
+
+  tags = {
+    Name = "${var.name}-was-${count.index == 2 ? "a" : "c"}"
+  }
+}
+
+output "ec2_publicip_web" {
+  value = aws_instance.foryou_web[*].public_ip
+}
+
+resource "aws_lb" "foryou_web_lb" {
+  name               = "${var.name}-web-lb"
+  internal           = var.bool0
+  load_balancer_type = var.lb_type
+  security_groups    = [aws_security_group.foryou_sgweb.id]
+  subnets            = [aws_subnet.web[0].id, aws_subnet.web[1].id]
+
+  tags = {
+    Name = "${var.name}-web-lb"
+  }
+}
+
+output "load_dns_web" {
+  value = aws_lb.foryou_web_lb.dns_name
+}
+
+resource "aws_lb_target_group" "foryou_albtg_web" {
+  name     = "${var.name}-albtg-web"
+  port     = var.httpport
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.foryou-vpc.id
+
+  health_check {
+    enabled             = var.bool1
+    healthy_threshold   = 2
+    interval            = 5
+    matcher             = "200"
+    path                = "/index.html"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 3
+    unhealthy_threshold = 3
+  }
+
+  tags = {
+    Name = "c${var.name}-albtg-web"
+  }
+}
+
+resource "aws_lb_target_group_attachment" "foryou_albat_web" {
+  count            = length(aws_instance.foryou_web)
+  target_group_arn = aws_lb_target_group.foryou_albtg_web.arn
+  target_id        = element(aws_instance.foryou_web[*].id, count.index)
+  port             = var.httpport
+
+  depends_on = [aws_instance.foryou_web]
+}
+
+resource "aws_lb_listener" "cyi_albli_web" {
+  load_balancer_arn = aws_lb.foryou_web_lb.id
+  port              = var.httpport
+  protocol          = "HTTP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.foryou_albtg_web.arn
+  }
+
+  tags = {
+    Name = "${var.name}-albli"
+  }
+}
+
+resource "aws_lb" "foryou_was_lb" {
+  name               = "${var.name}-was-lb"
+  internal           = var.bool0
+  load_balancer_type = var.lb_type
+  security_groups    = [aws_security_group.foryou_sgweb.id]
+  subnets            = [aws_subnet.was[0].id, aws_subnet.was[1].id]
+
+  tags = {
+    Name = "${var.name}-was-lb"
+  }
+}
+
+output "load_dns_was" {
+  value = aws_lb.foryou_was_lb.dns_name
+}
+
+resource "aws_lb_target_group" "foryou_albtg_was" {
+  name     = "${var.name}-albtg-was"
+  port     = var.httpport
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.foryou-vpc.id
+
+  health_check {
+    enabled             = var.bool1
+    healthy_threshold   = 2
+    interval            = 5
+    matcher             = "200"
+    path                = "/index.html"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 3
+    unhealthy_threshold = 3
+  }
+
+  tags = {
+    Name = "c${var.name}-albtg-was"
+  }
+}
+
+resource "aws_lb_target_group_attachment" "foryou_albat_was" {
+  count            = length(aws_instance.foryou_was)
+  target_group_arn = aws_lb_target_group.foryou_albtg_was.arn
+  target_id        = element(aws_instance.foryou_was[*].id, count.index)
+  port             = var.httpport
+
+  depends_on = [aws_instance.foryou_was]
+}
+
+resource "aws_lb_listener" "foryou_albli" {
+  load_balancer_arn = aws_lb.foryou_was_lb.arn
+  port              = var.httpport
+  protocol          = "HTTP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.foryou_albtg_was.arn
+  }
+
+  tags = {
+    Name = "${var.name}-albli"
+  }
+}
+
+resource "aws_ami_from_instance" "foryou_ami_web" {
+  name               = "${var.name}-ami-web"
+  source_instance_id = aws_instance.foryou_web[0].id
+
+  tags = {
+    Name = "${var.name}-ami-web"
+  }
+}
+
+resource "aws_launch_template" "foryou_lt_web" {
+  name = "${var.name}-lt-web"
+  block_device_mappings {
+    device_name = "/dev/sdd"
+    ebs {
+      volume_size = 20
+      volume_type = "gp2"
+    }
+  }
+
+  image_id               = aws_ami_from_instance.foryou_ami_web.id
+  instance_type          = var.type
+  key_name               = var.name
+  vpc_security_group_ids = [aws_security_group.foryou_sgweb.id]
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "${var.name}-lt-web"
+    }
+  }
+}
+
+resource "aws_autoscaling_group" "foryou_asg_web" {
+  name                      = "${var.name}-asg-web"
+  min_size                  = 1
+  max_size                  = 6
+  desired_capacity          = 1
+  health_check_grace_period = 30
+  health_check_type         = "EC2"
+  force_delete              = var.bool0
+  vpc_zone_identifier       = [aws_subnet.web[0].id, aws_subnet.web[1].id]
+
+  launch_template {
+    id      = aws_launch_template.foryou_lt_web.id
+    version = "$Latest"
+  }
+}
+
+resource "aws_autoscaling_attachment" "foryou_asgat_web" {
+  autoscaling_group_name = aws_autoscaling_group.foryou_asg_web.id
+  lb_target_group_arn    = aws_lb_target_group.foryou_albtg_web.arn
+}
+
+resource "aws_ami_from_instance" "foryou_ami_was" {
+  name               = "${var.name}-ami-was"
+  source_instance_id = aws_instance.foryou_was[0].id
+
+  tags = {
+    Name = "${var.name}-ami-was"
+  }
+}
+
+resource "aws_launch_template" "foryou_lt_was" {
+  name = "${var.name}-lt-was"
+  block_device_mappings {
+    device_name = "/dev/sdd"
+    ebs {
+      volume_size = 20
+      volume_type = "gp2"
+    }
+  }
+
+  image_id               = aws_ami_from_instance.foryou_ami_was.id
+  instance_type          = var.type
+  key_name               = var.name
+  vpc_security_group_ids = [aws_security_group.foryou_sgweb.id]
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "${var.name}-lt-was"
+    }
+  }
+}
+
+resource "aws_autoscaling_group" "foryou_asg_was" {
+  name                      = "${var.name}-asg-was"
+  min_size                  = 1
+  max_size                  = 6
+  desired_capacity          = 1
+  health_check_grace_period = 30
+  health_check_type         = "EC2"
+  force_delete              = var.bool0
+  vpc_zone_identifier       = [aws_subnet.was[0].id, aws_subnet.was[1].id]
+
+  launch_template {
+    id      = aws_launch_template.foryou_lt_was.id
+    version = "$Latest"
+  }
+}
+
+resource "aws_autoscaling_attachment" "cyi_asgat" {
+  autoscaling_group_name = aws_autoscaling_group.foryou_asg_was.id
+  lb_target_group_arn    = aws_lb_target_group.foryou_albtg_was.arn
+}
