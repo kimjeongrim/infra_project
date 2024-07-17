@@ -1,0 +1,41 @@
+resource "aws_security_group" "bastion_sg" {
+  name        = "bastion_sg"
+  description = "Allow SSH access from anywhere"
+  vpc_id      = aws_vpc.vpc.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # 관리자가 접속할 수 있도록 특정 IP로 제한하는 것이 좋습니다.
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "bastion" {
+  ami           = "ami-0c55b159cbfafe1f0"  # 최신 Amazon Linux 2 AMI를 사용하세요
+  instance_type = "t2.micro"
+  key_name      ="foryou"  # 관리자 SSH 키
+  subnet_id     = aws_subnet.web[1].id
+  security_groups = [aws_security_group.bastion_sg.name]
+
+  tags = {
+    Name = "bastion-host"
+  }
+}
+
+resource "aws_eip" "bation_eip" {
+  domain = "vpc"
+}
+resource "aws_eip_association" "bastion_eip_assoc" {
+  instance_id   = aws_instance.bastion.id
+  allocation_id = aws_eip.bastion_eip.id
+}
+
+
