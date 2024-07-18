@@ -1,0 +1,96 @@
+# EKS 클러스터 생성
+resource "aws_eks_cluster" "cluster" {
+  name     = var.cluster_name
+  role_arn = aws_iam_role.eks_role.arn
+
+  vpc_config {
+    subnet_ids              = concat(aws_subnet.web[*].id, aws_subnet.was[*].id)
+    security_group_ids      = [aws_security_group.cluster_sg.id,aws_security_group.default_sg.id]
+    endpoint_private_access = true
+    endpoint_public_access  = true
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_AmazonEKSClusterPolicy,
+    aws_iam_role_policy_attachment.eks_AmazonEKSVPCResourceController,
+  ]
+}
+
+data "aws_ami" "worker" {
+  filter {
+    name   = "amazon-eks-node-${aws_eks_cluster.cluster.version}-v*"
+    values = ["amazon-eks-node-*"]
+  }
+
+  most_recent = true
+  owners      = ["602401143452"]
+}
+
+locals {
+  eks_worker_userdata = <<USERDATA
+#!/bin/bash
+set -o xtrace
+/etc/eks/bootstrap.sh ${aws_eks_cluster.cluster.name} --apiserver-endpoint '${aws_eks_cluster.cluster.endpoint}' --b64-cluster-ca '${aws_eks_cluster.cluster.certificate_authority.0.data}'
+USERDATA
+}
+
+
+resource "aws_launch_configuration" "web_worker" {
+  associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.worker.name
+  image_id                    = data.aws_ami.worker.id
+  instance_type               = var.instance_type
+  name_prefix                 = "${var.cluster_name}-web-worker-"
+  security_groups             = [aws_security_group.worker_sg.id]
+  user_data_base64            = base64encode(local.eks_worker_userdata)
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_launch_configuration" "was_worker" {
+  associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.worker.name
+  image_id                    = data.aws_ami.worker.id
+  instance_type               = var.instance_type
+  name_prefix                 = "${var.cluster_name}-was-worker-"
+  security_groups             = [aws_security_group.worker_sg.id]
+  user_data_base64            = base64encode(local.eks_worker_userdata)
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_autoscaling_group" "web_worker" {
+  desired_capacity     = var.desired_capacity
+  max_size             = var.max_size
+  min_size             = var.min_size
+  launch_configuration = aws_launch_configuration.web_worker.id
+  vpc_zone_identifier  = aws_subnet.web[*].id
+
+  tag {
+    key                 = "Name"
+    value               = "${var.cluster_name}-web-worker"
+    propagate_at_launch = true
+  }
+
+  target_group_arns = [aws_lb_target_group.alb_tg.arn]
+}
+
+resource "aws_autoscaling_group" "was_worker" {
+  desired_capacity     = var.desired_capacity
+  max_size             = var.max_size
+  min_size             = var.min_size
+  launch_configuration = aws_launch_configuration.was_worker.id
+  vpc_zone_identifier  = aws_subnet.was[*].id
+
+  tag {
+    key                 = "Name"
+    value               = "${var.cluster_name}-was-worker"
+    propagate_at_launch = true
+  }
+
+  target_group_arns = [aws_lb_target_group.nlb_tg.arn]
+}

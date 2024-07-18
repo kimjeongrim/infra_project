@@ -1,0 +1,56 @@
+variable "bool0" {
+  type = boolean
+}
+variable "bool1" {
+  type = boolean
+}
+
+variable "ssd_type" {
+  type = string
+}
+
+variable "mysql" {
+  type = string
+}
+
+variable "engine_ver" {
+  type = string
+}
+
+variable "db_type" {
+  type = string
+}
+
+variable "db_name" {
+  type = string
+}
+
+variable "username" {
+  type = string
+}
+
+
+variable "password" {
+  type = string
+}
+
+variable "dbidentifier" {
+  type = string
+}
+
+variable "dbusername" {
+  type = string
+}
+
+variable "dbpassword" {
+  type = string
+}
+
+  bool0 = false
+  bool1 = true
+  dbtype = "db.t3.micro"
+  dbname = "wordpress"
+  dbidentifier = "cyidb"
+  dbusername = "root"
+  dbpassword = "It12345!"
+  ssdtype = "gp2"

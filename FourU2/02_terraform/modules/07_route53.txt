@@ -1,0 +1,34 @@
+resource "aws_route53_zone" "ogurim_store" {
+  name          = "ogurim.store"
+  force_destroy = true
+
+  tags = {
+    Name = "ogurim-store"
+  }
+}
+
+data "aws_lb" "alb" {
+  name = "k8s-default-webingr-xxxx"  # Ingress에서 생성된 ALB의 이름
+}
+
+resource "aws_route53_record" "www" {
+  zone_id = aws_route53_zone.ogurim_store.id
+  name    = "www.ogurim.store"
+  type    = "A"
+
+  alias {
+    name                   = data.aws_lb.alb.dns_name
+    zone_id                = data.aws_lb.alb.zone_id
+    evaluate_target_health = true
+  }
+
+  depends_on = [ data.aws_lb.alb ]
+}
+
+output "dns_zone_name" {
+  value = aws_route53_zone.ogurim_store.name
+}
+
+output "dns_record_name" {
+  value = aws_route53_record.www.name
+}
