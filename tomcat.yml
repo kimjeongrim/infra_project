@@ -1,0 +1,4 @@
+- name: install galaxy tomcat
+  hosts: test3
+  roles:
+    - tomcat
