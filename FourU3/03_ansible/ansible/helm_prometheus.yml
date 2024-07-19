@@ -1,0 +1,46 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install required packages
+      apt:
+        name: tar
+        state: present
+        update_cache: yes
+
+    - name: Download Helm install script
+      get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get_helm.sh
+        mode: '0700'
+
+    - name: Run Helm install script
+      shell: /tmp/get_helm.sh
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Add Helm stable repository
+      shell: helm repo add stable https://charts.helm.sh/stable
+      args:
+        creates: /root/.cache/helm/repository/stable-index.yaml
+
+    - name: Add Prometheus community repository
+      shell: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      args:
+        creates: /root/.cache/helm/repository/prometheus-community-index.yaml
+
+    - name: Update Helm repositories
+      shell: helm repo update
+
+    - name: Install kube-prometheus-stack chart
+      shell: helm install prometheus-community/kube-prometheus-stack --generate-name
+      register: helm_output
+
+    - name: Get Prometheus Grafana admin password
+      shell: >
+        kubectl get secret -n default $(echo "{{ helm_output.stdout }}" | grep "STATUS:" | awk '{print $2}' | sed 's/"//g')-grafana -o jsonpath="{.data.admin-password}" | base64 --decode
+      register: grafana_password
+
+    - name: Show Grafana admin password
+      debug:
+        msg: "Grafana admin password is {{ grafana_password.stdout }}"
