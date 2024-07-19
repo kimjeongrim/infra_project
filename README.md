@@ -5,6 +5,18 @@ terraform + ansible + k8s + eks
 rds-rep.tf 
 ingress 3306 추가 필요
 
+#### /etc/nginx/nginx.conf
+```
+# 톰캣 연동 추가 IP 수정 필요
+  upstream tomcat {
+    server 10.0.0.36:8080;
+  }
+# 톰캣 연동 추가
+location /{
+  proxy_pass http://tomcat;
+}
+```
+
 #### tomcat war 배포 시
 server.xml, foryou.war 필요
 
