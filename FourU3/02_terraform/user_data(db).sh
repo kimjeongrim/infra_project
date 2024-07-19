@@ -12,11 +12,11 @@ mysql -uroot -p$password -e \
 " CREATE table foryou.board ( \
    id varchar(10),\
    board_writer varchar(10),\
-   board_pass varchar(20),\
+   board_contents varchar(20),\
    board_Title varchar(20),\
    create_at varchar(20)\
 );
-INSERT INTO foryou.board (id, board_writer, board_pass, board_Title, create_at) VALUES \
+INSERT INTO foryou.board (id, board_writer, board_contents, board_Title, create_at) VALUES \
 ('1', '박지원', 'It12345!', '앤서블 어려워', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')),\
 ('2', '김정림', 'It12345!', '다~그닥~ 다~그닥~', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')),\
 ('3', '최예인', 'It12345!', '테라폼 알고보니...', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'));"
