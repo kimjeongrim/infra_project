@@ -10,7 +10,7 @@ terraform {
      bucket         = "foryou-terraform-state"      # S3 버킷 이름
      key            = "terraform/terraform.tfstate" # tfstate 저장 경로
      region         = "ap-northeast-2"              # S3 리전 위치
-     dynamodb_table = "foryou-terraform-state-lock2" # dynamodb table 이름
+     dynamodb_table = "foryou-terraform-state-lock2"# dynamodb table 이름
      encrypt        = true                          # 암호화
    }
    */

@@ -81,7 +81,6 @@ resource "null_resource" "copy_ansible_playbooks" {
         insecure    = true
         agent         = false
       }
-    
   }
 }
 
