@@ -2,11 +2,10 @@
 terraform + ansible + k8s + eks
 
 #### RDS 읽기 전용 복제본
-rds-rep.tf 
+rds-rep.tf
 Rocky Linux mysql  Ver 8.0.36
 RDS mysql 8.0.36 사용
 ingress 3306 추가 필요
-
 
 #### tomcat 연동
 ✔ /etc/nginx/nginx.conf 추가
