@@ -1,0 +1,21 @@
+# all instance setting
+---
+- name: Update /etc/hosts file
+  hosts: all
+  become: yes
+  tasks:
+    - name: Add entries to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item }}"
+        state: present
+      with_items:
+        - "10.0.0.11 bastion ba ba.ogurim.store"
+        - "10.0.2.11 master01 ma1 ma1.ogurim.store"
+        - "10.0.3.11 master02 ma2 ma2.ogurim.store"
+        - "10.0.2.12 work01 wo1 wo1.ogurim.store"
+        - "10.0.3.12 work02 no2 no2.ogurim.store"
+        - "10.0.2.13 work03 no3 no3.ogurim.store"
+        - "10.0.3.13 work04 no4 no4.ogurim.store"
+        - "10.0.5.11 db01 db1 db1.ogurim.store"
+        - "10.0.5.12 db02 db2 db2.ogurim.store"

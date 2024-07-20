@@ -1,0 +1,11 @@
+---
+# handlers file for nginx
+- name: "started {{ package }}"
+  systemd:
+    name: "{{ package }}"
+    state: started
+
+- name: "restarted {{ package }}"
+  systemd:
+    name: "{{ package }}"
+    state: restarted

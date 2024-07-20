@@ -1,0 +1,6 @@
+---
+- name: Deploy Nginx
+  hosts: all
+  become: yes
+  roles:
+    - { role: /home/ubuntu/ansible/galaxy/nginx, when: "'web' in group_names" }

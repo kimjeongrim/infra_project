@@ -1,0 +1,51 @@
+[all:vars]
+ansible_ssh_common_args='-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -q ubuntu@${bastion_ip}"'
+ansible_user = ubuntu
+ansible_ssh_private_key_file = "/home/ubuntu/ansible/foryou_key.pem"
+
+[masters_first]
+%{ for index in range(length(masters_dns)) ~}
+  %{ if index == 0 ~}
+    ${masters_dns[index]} ansible_host=${masters_ip[index]} # ${masters_id[index]}
+  %{ endif ~}
+%{ endfor ~}
+
+[masters_others]
+%{ for index in range(length(masters_dns)) ~}
+  %{ if index != 0 ~}
+    ${masters_dns[index]} ansible_host=${masters_ip[index]} # ${masters_id[index]}
+  %{ endif ~}
+%{ endfor ~}
+
+[masters:children]
+masters_first
+masters_others
+
+[workers]
+%{ for index in range(length(workers_dns)) ~}
+  ${workers_dns[index]} ansible_host=${workers_ip[index]} # ${workers_id[index]}
+%{ endfor ~}
+
+[nodes]
+%{ for index in range(length(masters_dns)) ~}
+  ${masters_dns[index]} ansible_host=${masters_ip[index]} # ${masters_id[index]}
+%{ endfor ~}
+%{ for index in range(length(workers_dns)) ~}
+  ${workers_dns[index]} ansible_host=${workers_ip[index]} # ${workers_id[index]}
+%{ endfor ~}
+
+[web]
+%{ for index in [0, 1] ~} # 첫 두 worker 노드를 web으로 할당
+  ${workers_dns[index]} ansible_host=${workers_ip[index]} # ${workers_id[index]}
+%{ endfor ~}
+
+[was]
+%{ for index in [2, 3] ~} # 나머지 두 worker 노드를 was로 할당
+  ${workers_dns[index]} ansible_host=${workers_ip[index]} # ${workers_id[index]}
+%{ endfor ~}
+
+[database]
+${database_dns} ansible_host=${database_ip} # ${database_id}
+
+[bastion]
+${bastion_dns} ansible_host=${bastion_ip} # ${bastion_id}
