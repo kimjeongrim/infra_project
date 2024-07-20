@@ -1,0 +1,14 @@
+- name: start tomcat
+  shell: |
+    /opt/apache-tomcat-9.0.71/bin/shutdown.sh
+    sleep 5
+    nohup /opt/apache-tomcat-9.0.71/bin/startup.sh &
+  become: yes
+  become_user: root
+
+- name: open firewall for tomcat
+  ufw:
+    rule: allow
+    port: 8080
+    proto: tcp
+  become: yes

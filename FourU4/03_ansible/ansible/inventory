@@ -1,0 +1,30 @@
+[all:vars]
+ansible_ssh_common_args='-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -q ubuntu@10.0.0.11"'
+
+[masters_first]
+            ip-10-0-2-79.ap-northeast-2.compute.internal ansible_host=10.0.2.79 # i-06a2f25e154af4c7d
+        
+[masters_others]
+                ip-10-0-3-177.ap-northeast-2.compute.internal ansible_host=10.0.3.177 # i-03caa7f4b8a4f9f72
+    
+[masters:children]
+masters_first
+masters_others
+
+[workers]
+ip-10-0-2-75.ap-northeast-2.compute.internal ansible_host=10.0.2.75 # i-06ab1c557e18356f0
+ip-10-0-3-30.ap-northeast-2.compute.internal ansible_host=10.0.3.30 # i-05a6bd7c004f2a6c6
+ip-10-0-2-109.ap-northeast-2.compute.internal ansible_host=10.0.2.109 # i-03a25bb3862ae48b7
+ip-10-0-3-18.ap-northeast-2.compute.internal ansible_host=10.0.3.18 # i-02031fba634f2c799
+
+[web]
+# 첫 두 worker 노드를 web으로 할당
+ip-10-0-2-75.ap-northeast-2.compute.internal ansible_host=10.0.2.75 # i-06ab1c557e18356f0
+# 첫 두 worker 노드를 web으로 할당
+ip-10-0-3-30.ap-northeast-2.compute.internal ansible_host=10.0.3.30 # i-05a6bd7c004f2a6c6
+
+[was]
+# 나머지 두 worker 노드를 was로 할당
+ip-10-0-2-109.ap-northeast-2.compute.internal ansible_host=10.0.2.109 # i-03a25bb3862ae48b7
+# 나머지 두 worker 노드를 was로 할당
+ip-10-0-3-18.ap-northeast-2.compute.internal ansible_host=10.0.3.18 # i-02031fba634f2c799
